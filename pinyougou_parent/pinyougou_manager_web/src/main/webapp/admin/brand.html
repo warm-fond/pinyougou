@@ -27,15 +27,57 @@
 		<!--定义模块 -->
 		var app=angular.module("pinyougou",["pagination"]);
 
-		<!--创建控制器     在控制器中编写代码       -->
-		app.controller("brandController",function ($scope,$http) {
+
+        //品牌服务层-service层
+        app.service("brandService",function ($http){
+            //品牌查询
+            this.findAll=function(){
+                return  $http.get("../brand/findAll.do");
+            }
+
+            //分页
+            this.findPage=function (page,size) {
+                return $http.get("../brand/findPage.do?page=" + page + "&rows=" + size);
+            }
+
+            //查询指定品牌
+            this.findOne=function (id) {
+                return $http.get("../brand/findOne.do?id=" + id);
+            }
+
+            //品牌条件查询（关键字模糊查询&首字母查询）
+            this.search=function(page,rows,searchEntity) {
+                return $http.post("../brand/search.do?page=" + page + "&rows=" + rows, searchEntity);
+            }
+
+            //批量删除
+            this.dele=function (ids) {
+                //获取选中的复选框
+				return $http.get("../brand/delete.do?ids=" +ids);
+            }
+
+            //增加品牌
+            this.add=function (entity) {
+                return $http.post("../brand/add.do",entity);
+            }
+
+            //更新指定品牌（修改）
+            this.update=function (entity) {
+                return $http.post("../brand/update.do",entity);
+            }
+        });
+
+		<!-- 创建控制器  品牌控制层  在控制器中编写代码       -->
+		app.controller("brandController",function ($scope,$http,brandService) {
 
 		    <!-- 1 查询品牌列表 读取列表数据绑定到表单中-->
 			$scope.findAll=function () {
-				$http.get("../brand/findAll.do").success(function (response) {
+				brandService.findAll().success(
+				    function (response) {
 					$scope.list=response;
                 });
             }
+
 
 		//	2 分页 JS代码
 			<!--分页JS代码区-->
@@ -58,7 +100,8 @@
 
             //分页
 			$scope.findPage=function (page,size) {
-				$http.get("../brand/findPage.do?page="+page+"&rows="+size).success(
+			    //！！！不要漏掉参数
+				brandService.findPage(page,size).success(
 				    function (response) {
 						$scope.list=response.rows;//显示当前页数据
 						$scope.paginationConf.totalItems=response.total;//更新总记录数
@@ -69,7 +112,7 @@
 
             <!--增加品牌代码区-->
             //新增
-			$scope.save=function () {
+			/*$scope.save=function () {
 			    //判断有无id,选择方法
 				var methodName="add";//方法名
 				if($scope.entity.id!=null){
@@ -85,13 +128,34 @@
                     }
 				);
             }
+*/
+            // 修改  抽取service业务后的代码
+			$scope.save=function () {
+			    var object=null;//定义一个对象变量
+			    if ($scope.entity.id!=null){
+			        //将调用update方法获取的对象赋值给object
+			        object=brandService.update($scope.entity);
+				} else{
+                    //将调用add方法获取的对象赋值给object
+			        object=brandService.add($scope.entity);
+				}
+				object.success(
+				    function(response){
+				        if(response.success){
+                            $scope.reloadList();
+						}else{
+				            alert(response.message)
+						}
+					}
+				);
+            }
 
             <!--增加品牌代码区-->
 
-			<!--修改区-->
+<!--修改区-->
             //查询实体
             $scope.findOne=function (id) {
-                $http.get("../brand/findOne.do?id="+id).success(
+                brandService.findObject(id).success(
                     function (response) {
                         $scope.entity=response;
                     }
@@ -115,8 +179,7 @@
             //批量删除
 			$scope.dele=function () {
 				//获取选中的复选框
-
-				$http.get("../brand/delete.do?ids="+$scope.selectIds).success(
+				brandService.dele($scope.selectIds).success(
 				    function (response) {
 						if(response.success){
 						    $scope.reloadList();//刷新列表
@@ -130,22 +193,16 @@
 
             $scope.search=function(page,rows){
                 //条件查询
-                $http.post("../brand/search.do?page="+page+"&rows="+rows,$scope.searchEntity).success(
-
+                brandService.search(page,rows,$scope.searchEntity).success(
                  	function (response) {
 						$scope.paginationConf.totalItems=response.total;//更新总记录数
                         $scope.list=response.rows;//给列表变量赋值
                     }
 				);
             }
-
-            //刷新查询列表
-			//修改上面代码
-
-
+            //下一步刷新查询列表
  <!--品牌条件查询-->
         });
-
 
 	</script>
 
